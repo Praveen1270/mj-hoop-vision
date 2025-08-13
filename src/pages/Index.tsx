@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { VideoUpload } from "@/components/VideoUpload";
+import { VideoProcessor } from "@/components/VideoProcessor";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { AnalysisDashboard } from "@/components/AnalysisDashboard";
+import { ShotAnalysis, GameStats } from "@/lib/basketballAnalyzer";
 import { 
   Brain, 
   Video, 
@@ -11,24 +14,31 @@ import {
   Zap,
   Star,
   Trophy,
-  Play
+  Play,
+  ArrowLeft
 } from "lucide-react";
 import basketballCourt from "@/assets/basketball-court.jpg";
 import mjLogo from "@/assets/mj-logo.png";
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'upload' | 'dashboard'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'upload' | 'processing' | 'analysis'>('landing');
   const [uploadedVideo, setUploadedVideo] = useState<File | null>(null);
+  const [analysisData, setAnalysisData] = useState<{
+    shots: ShotAnalysis[];
+    gameStats: GameStats;
+  } | null>(null);
 
   const handleVideoSelect = (file: File) => {
     setUploadedVideo(file);
-    // Simulate processing
-    setTimeout(() => {
-      setCurrentView('dashboard');
-    }, 2000);
+    setCurrentView('processing');
   };
 
-  if (currentView === 'dashboard') {
+  const handleAnalysisComplete = (shots: ShotAnalysis[], gameStats: GameStats) => {
+    setAnalysisData({ shots, gameStats });
+    setCurrentView('analysis');
+  };
+
+  if (currentView === 'analysis' && analysisData && uploadedVideo) {
     return (
       <div className="min-h-screen bg-background">
         {/* Header */}
@@ -46,9 +56,9 @@ const Index = () => {
                 <Video className="w-4 h-4" />
                 New Analysis
               </Button>
-              <Button variant="mj" size="sm">
-                <Trophy className="w-4 h-4" />
-                Championship Mode
+              <Button variant="mj" size="sm" onClick={() => setCurrentView('landing')}>
+                <ArrowLeft className="w-4 h-4" />
+                Back to Home
               </Button>
             </div>
           </div>
@@ -57,13 +67,56 @@ const Index = () => {
         {/* Dashboard Content */}
         <main className="container mx-auto px-4 py-8">
           <div className="mb-6">
-            <h2 className="text-3xl font-bold text-foreground mb-2">Game Analysis</h2>
+            <h2 className="text-3xl font-bold text-foreground mb-2">Game Analysis Complete</h2>
             <p className="text-muted-foreground">
-              {uploadedVideo?.name} • Processed with MJ's championship standards
+              {uploadedVideo?.name} • {analysisData.shots.length} shots analyzed with MJ's championship standards
             </p>
           </div>
-          <AnalysisDashboard />
+          
+          <VideoPlayer 
+            videoFile={uploadedVideo} 
+            shots={analysisData.shots} 
+            gameStats={analysisData.gameStats} 
+          />
         </main>
+      </div>
+    );
+  }
+
+  if (currentView === 'processing' && uploadedVideo) {
+    return (
+      <div 
+        className="min-h-screen bg-background relative overflow-hidden"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.8)), url(${basketballCourt})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-court/50" />
+        
+        <div className="relative z-10 container mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <Button 
+              variant="ghost" 
+              className="mb-4 text-muted-foreground hover:text-foreground"
+              onClick={() => setCurrentView('upload')}
+            >
+              ← Back to Upload
+            </Button>
+            <h1 className="text-4xl font-bold text-foreground mb-4">
+              AI Analysis in Progress
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Our AI is analyzing your basketball footage at 1 FPS with computer vision technology
+            </p>
+          </div>
+
+          <VideoProcessor 
+            videoFile={uploadedVideo} 
+            onAnalysisComplete={handleAnalysisComplete}
+          />
+        </div>
       </div>
     );
   }
